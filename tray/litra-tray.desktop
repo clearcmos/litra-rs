@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Litra Tray
+GenericName=Litra Light Control
+Comment=Control Logitech Litra Glow lights from system tray
+Exec=litra-tray
+Icon=preferences-system-brightness-lock
+Terminal=false
+Categories=Utility;Qt;
+Keywords=litra;light;brightness;led;
+StartupNotify=false
+X-KDE-autostart-after=panel
