@@ -123,6 +123,40 @@ The following tools are available:
 - `litra_temperature_up`: Increases the temperature of your Logitech Litra device, using a specific value measured in kelvin (K). The value must be a multiple of 100.
 - `litra_temperature_down`: Decreases the temperature of your Logitech Litra device, using a specific measured in kelvin (K). The value must be a multiple of 100.
 
+### Via GUI applications
+
+#### macOS Menubar Application
+
+A native macOS menubar application provides quick access to your Litra devices from the system menu bar.
+
+**Features:**
+- System tray icon with click-to-show popup window
+- Device selection from multiple connected Litra devices
+- Real-time power, brightness, and temperature controls
+- Positioned popup window below the menubar icon
+
+**Building and running:**
+
+```bash
+# Build the menubar application
+cargo build --bin litra-menubar --features menubar --release
+
+# Run from the build directory
+./target/release/litra-menubar
+```
+
+For easier access, you can optionally create a macOS `.app` bundle to add to your Applications folder or run at login.
+
+#### KDE Plasma System Tray Application (Linux)
+
+A KDE Plasma system tray application for Linux users. See [`tray/README.md`](tray/README.md) for full documentation.
+
+**Features:**
+- System tray integration for KDE Plasma
+- Real-time brightness and temperature control
+- Quick access presets
+- Wayland support
+
 ### From a Rust application
 
 The `litra` crate includes functions for interacting with Litra devices from your Rust applications.
