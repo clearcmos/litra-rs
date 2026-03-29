@@ -48,20 +48,29 @@ impl AppState {
     /// Refresh device state from hardware
     fn refresh_from_device(&mut self) {
         if let Some(handle) = self.get_device_handle() {
+            // Try to read power state, but if it fails, assume device is off
+            // This handles cases where the device has never been turned on since USB connection
             match handle.is_on() {
-                Ok(is_on) => self.power_on = is_on,
-                Err(e) => self.error_message = Some(format!("Failed to read power state: {}", e)),
+                Ok(is_on) => {
+                    self.power_on = is_on;
+                    self.error_message = None;
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to read power state (device may be in standby): {}", e);
+                    // Assume device is off if we can't read the state
+                    self.power_on = false;
+                    self.error_message = None;
+                }
             }
 
+            // Only try to read brightness/temperature if device reports as on
             if self.power_on {
-                match handle.brightness_in_lumen() {
-                    Ok(brightness) => self.brightness = brightness,
-                    Err(e) => self.error_message = Some(format!("Failed to read brightness: {}", e)),
+                if let Ok(brightness) = handle.brightness_in_lumen() {
+                    self.brightness = brightness;
                 }
 
-                match handle.temperature_in_kelvin() {
-                    Ok(temp) => self.temperature = temp,
-                    Err(e) => self.error_message = Some(format!("Failed to read temperature: {}", e)),
+                if let Ok(temp) = handle.temperature_in_kelvin() {
+                    self.temperature = temp;
                 }
             }
         }
@@ -77,15 +86,31 @@ impl AppState {
             }
 
             if self.power_on {
+                // Ensure brightness is within valid range
+                let min_brightness = handle.minimum_brightness_in_lumen();
+                let max_brightness = handle.maximum_brightness_in_lumen();
+                if self.brightness < min_brightness {
+                    self.brightness = min_brightness;
+                } else if self.brightness > max_brightness {
+                    self.brightness = max_brightness;
+                }
+
                 // Set brightness
                 if let Err(e) = handle.set_brightness_in_lumen(self.brightness) {
                     self.error_message = Some(format!("Failed to set brightness: {}", e));
+                    return;
                 }
 
-                // Round temperature to nearest 100
+                // Round temperature to nearest 100 and ensure it's in valid range
                 let rounded_temp = (self.temperature / 100) * 100;
-                if let Err(e) = handle.set_temperature_in_kelvin(rounded_temp) {
+                let clamped_temp = rounded_temp.clamp(
+                    handle.minimum_temperature_in_kelvin(),
+                    handle.maximum_temperature_in_kelvin()
+                );
+
+                if let Err(e) = handle.set_temperature_in_kelvin(clamped_temp) {
                     self.error_message = Some(format!("Failed to set temperature: {}", e));
+                    return;
                 }
             }
 
