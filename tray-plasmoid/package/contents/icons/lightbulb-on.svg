@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <radialGradient id="glow" cx="12" cy="10" r="9" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff8c4" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#ffd966" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#ffb300" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bulb" cx="11" cy="9" r="7" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#fff19a"/>
+      <stop offset="1" stop-color="#f9a825"/>
+    </radialGradient>
+  </defs>
+  <circle cx="12" cy="10" r="9" fill="url(#glow)"/>
+  <path d="M12 2.2c-3.6 0-6.4 2.9-6.4 6.4 0 2.4 1.3 4.5 3.2 5.7v2.1c0 0.7 0.6 1.3 1.3 1.3h3.8c0.7 0 1.3-0.6 1.3-1.3v-2.1c1.9-1.2 3.2-3.3 3.2-5.7 0-3.5-2.8-6.4-6.4-6.4z"
+        fill="url(#bulb)" stroke="#b8860b" stroke-width="0.6"/>
+  <rect x="9.4" y="18.4" width="5.2" height="1.6" rx="0.4" fill="#9e9e9e"/>
+  <rect x="9.6" y="20.4" width="4.8" height="1.2" rx="0.4" fill="#757575"/>
+  <path d="M11 7.5 L11 13 M13 7.5 L13 13 M11 10 L13 10" stroke="#fff19a" stroke-width="0.7" fill="none" opacity="0.8"/>
+</svg>

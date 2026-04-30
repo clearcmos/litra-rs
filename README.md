@@ -5,7 +5,7 @@
 > **Fork notice.** This repository is a personal fork of [`timrogers/litra-rs`](https://github.com/timrogers/litra-rs). It tracks upstream but adds two GUI front-ends on top of the library and CLI:
 >
 > - A native **macOS menubar application** (`litra-menubar` binary, behind the `menubar` cargo feature) - see [macOS Menubar Application](#macos-menubar-application) below.
-> - A **KDE Plasma system tray application** for Linux - see [`tray/`](tray/) and [KDE Plasma System Tray Application (Linux)](#kde-plasma-system-tray-application-linux) below.
+> - A **KDE Plasma 6 plasmoid** for Linux - see [`tray-plasmoid/`](tray-plasmoid/) and [KDE Plasma Plasmoid (Linux)](#kde-plasma-plasmoid-linux) below.
 >
 > Everything else in this README reflects upstream behavior. The fork may lag behind upstream; for the canonical project see the upstream repo. See [`CLAUDE.md`](CLAUDE.md) for a full list of fork changes.
 
@@ -178,15 +178,29 @@ cargo build --bin litra-menubar --features menubar --release
 
 For easier access, you can optionally create a macOS `.app` bundle to add to your Applications folder or run at login.
 
-#### KDE Plasma System Tray Application (Linux)
+#### KDE Plasma Plasmoid (Linux)
 
-A KDE Plasma system tray application for Linux users. See [`tray/README.md`](tray/README.md) for full documentation.
+A native KDE Plasma 6 plasmoid (QML widget) lives in [`tray-plasmoid/`](tray-plasmoid/). It plugs into the panel or system tray, gets popup positioning for free from Plasma, and shells out to the `litra` CLI.
 
 **Features:**
-- System tray integration for KDE Plasma
-- Real-time brightness and temperature control
-- Quick access presets
-- Wayland support
+- Native Plasma 6 system tray integration with proper popup anchoring
+- Real-time brightness and temperature control via `litra`
+- Custom lightbulb icon (lit when on, outline when off)
+
+**Install (Arch via the bundled PKGBUILD):**
+
+```bash
+makepkg -si    # builds litra CLI + udev rule + installs plasmoid system-wide
+```
+
+Then add the widget: right-click panel/system tray > **Add or Manage Widgets** > search **Litra Glow Control**.
+
+**Manual install (development / non-Arch):**
+
+```bash
+cd tray-plasmoid && ./install.sh
+kquitapp6 plasmashell && (setsid plasmashell &) >/dev/null 2>&1
+```
 
 ### From a Rust application
 

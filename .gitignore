@@ -3,3 +3,9 @@
 **/.claude/settings.local.json
 .DS_Store
 *.app
+
+# Local makepkg build artifacts (PKGBUILD pulls fresh from GitHub)
+/litra-custom/
+/pkg/
+/src/litra-custom/
+/litra-custom-*.pkg.tar.zst

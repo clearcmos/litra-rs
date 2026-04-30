@@ -1,0 +1,21 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "nicbedros@gmail.com",
+                "Name": "Nicholas"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Control Logitech Litra lights from the panel or system tray.",
+        "Icon": "redshift-status-on",
+        "Id": "io.github.clearcmos.litra",
+        "License": "MIT",
+        "Name": "Litra Glow Control",
+        "Version": "1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-NotificationArea": "true",
+    "X-Plasma-NotificationAreaCategory": "Hardware"
+}
