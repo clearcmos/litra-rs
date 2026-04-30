@@ -2,6 +2,13 @@
 
 💡 Control Logitech Litra lights from the command line, Model Context Protocol (MCP) clients and Rust applications
 
+> **Fork notice.** This repository is a personal fork of [`timrogers/litra-rs`](https://github.com/timrogers/litra-rs). It tracks upstream but adds two GUI front-ends on top of the library and CLI:
+>
+> - A native **macOS menubar application** (`litra-menubar` binary, behind the `menubar` cargo feature) - see [macOS Menubar Application](#macos-menubar-application) below.
+> - A **KDE Plasma system tray application** for Linux - see [`tray/`](tray/) and [KDE Plasma System Tray Application (Linux)](#kde-plasma-system-tray-application-linux) below.
+>
+> Everything else in this README reflects upstream behavior. The fork may lag behind upstream; for the canonical project see the upstream repo. See [`CLAUDE.md`](CLAUDE.md) for a full list of fork changes.
+
 ---
 
 ## Features
