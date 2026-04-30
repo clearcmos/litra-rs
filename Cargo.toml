@@ -1,6 +1,6 @@
 [package]
 name = "litra"
-version = "2.4.0"
+version = "3.3.0"
 edition = "2021"
 authors = ["Tim Rogers <timrogers@github.com>"]
 description = "Control Logitech Litra lights from the command line, Model Context Protocol (MCP) clients and Rust applications"
@@ -13,22 +13,27 @@ keywords = ["logitech", "litra", "glow", "beam", "light"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hidapi = "2.6.3"
-clap = { version = "4.5.45", features = ["derive"], optional = true }
-serde = { version = "1.0.219", features = ["derive"], optional = true }
-serde_json = { version = "1.0.142", optional = true }
-tabled = { version = "0.16", optional = true }
-rmcp = { version = "0.6.0", features = ["server", "transport-io", "macros"], optional = true }
-tokio = { version = "1.47", features = ["rt", "rt-multi-thread", "macros"], optional = true }
+hidapi = "2.6.5"
+clap = { version = "4.6.1", features = ["derive"], optional = true }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.149" }
+tabled = { version = "0.20", optional = true }
+rmcp = { version = "1.5.0", features = ["server", "transport-io", "macros"], optional = true }
+tokio = { version = "1.52", features = ["rt", "rt-multi-thread", "macros"], optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
-schemars = { version = "0.8", features = ["derive"], optional = true }
+schemars = { version = "1.2", features = ["derive"], optional = true }
+ureq = { version = "3.3.0", features = ["json"], optional = true }
+toml = { version = "1.1.2", optional = true }
+dirs = { version = "6.0.0", optional = true }
+chrono = { version = "0.4.44", default-features = false, features = ["std", "clock"], optional = true }
+colored = { version = "3.1", optional = true }
 eframe = { version = "0.29", optional = true }
 tray-icon = { version = "0.19", optional = true }
 
 [features]
 default = ["cli", "mcp"]
-cli = ["dep:clap", "dep:serde", "dep:serde_json", "dep:tabled"]
+cli = ["dep:clap", "dep:tabled", "dep:ureq", "dep:toml", "dep:dirs", "dep:chrono", "dep:colored"]
 mcp = ["cli", "dep:rmcp", "dep:tokio", "dep:tracing", "dep:tracing-subscriber", "dep:schemars"]
 menubar = ["dep:eframe", "dep:tray-icon"]
 

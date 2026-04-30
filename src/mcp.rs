@@ -1,9 +1,8 @@
-use std::future::Future;
 use std::str::FromStr;
 
 use litra::DeviceType;
 use rmcp::{
-    handler::server::{router::tool::ToolRouter, tool::Parameters},
+    handler::server::wrapper::{Json, Parameters},
     model::*,
     schemars, tool, tool_handler, tool_router,
     transport::stdio,
@@ -11,11 +10,20 @@ use rmcp::{
 };
 
 use crate::{
-    get_connected_devices, handle_brightness_command, handle_brightness_down_command,
-    handle_brightness_up_command, handle_off_command, handle_on_command,
-    handle_temperature_command, handle_temperature_down_command, handle_temperature_up_command,
-    handle_toggle_command, CliError, CliResult,
+    get_connected_devices, handle_back_brightness_command, handle_back_brightness_down_command,
+    handle_back_brightness_up_command, handle_back_color_command, handle_back_off_command,
+    handle_back_on_command, handle_back_toggle_command, handle_brightness_command,
+    handle_brightness_down_command, handle_brightness_up_command, handle_off_command,
+    handle_on_command, handle_temperature_command, handle_temperature_down_command,
+    handle_temperature_up_command, handle_toggle_command, CliError, CliResult, DeviceInfo,
 };
+
+/// Wrapper struct for device list to satisfy MCP's requirement for object root type
+#[derive(serde::Serialize, schemars::JsonSchema)]
+pub struct DeviceListResponse {
+    /// List of connected Litra devices
+    pub devices: Vec<DeviceInfo>,
+}
 
 // Helper function to convert string to DeviceType
 fn parse_device_type(device_type_str: Option<&String>) -> Option<DeviceType> {
@@ -58,21 +66,52 @@ pub struct LitraTemperatureParams {
     pub value: u16,
 }
 
-#[derive(Clone)]
-pub struct LitraMcpServer {
-    tool_router: ToolRouter<LitraMcpServer>,
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+pub struct LitraBackToolParams {
+    /// The serial number of the device to target (optional - if not specified, all devices are targeted)
+    pub serial_number: Option<String>,
+    /// The device path to target (optional - useful for devices that don't show a serial number)
+    pub device_path: Option<String>,
 }
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+pub struct LitraBackBrightnessParams {
+    /// The serial number of the device to target (optional - if not specified, all devices are targeted)
+    pub serial_number: Option<String>,
+    /// The device path to target (optional - useful for devices that don't show a serial number)
+    pub device_path: Option<String>,
+    /// The brightness as a percentage (1-100)
+    pub percentage: u8,
+}
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+pub struct LitraBackColorParams {
+    /// The serial number of the device to target (optional - if not specified, all devices are targeted)
+    pub serial_number: Option<String>,
+    /// The device path to target (optional - useful for devices that don't show a serial number)
+    pub device_path: Option<String>,
+    /// The color in hex format (e.g., "#FF0000" for red)
+    pub hex: String,
+    /// The zone ID to target (1-7, optional - if not specified, all zones are targeted)
+    pub zone_id: Option<u8>,
+}
+
+#[derive(Clone, Default)]
+pub struct LitraMcpServer;
 
 #[tool_router]
 impl LitraMcpServer {
     pub fn new() -> Self {
-        Self {
-            tool_router: Self::tool_router(),
-        }
+        Self
     }
 
     #[tool(
-        description = "Turn Logitech Litra device(s) on. By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Turn Logitech Litra device(s) on. By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn litra_on(
         &self,
@@ -91,7 +130,12 @@ impl LitraMcpServer {
     }
 
     #[tool(
-        description = "Turn Logitech Litra device(s) off. By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Turn Logitech Litra device(s) off. By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn litra_off(
         &self,
@@ -110,7 +154,12 @@ impl LitraMcpServer {
     }
 
     #[tool(
-        description = "Toggle Logitech Litra device(s) on or off. By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Toggle Logitech Litra device(s) on or off. By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn litra_toggle(
         &self,
@@ -129,7 +178,12 @@ impl LitraMcpServer {
     }
 
     #[tool(
-        description = "Set the brightness of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Set the brightness of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn litra_brightness(
         &self,
@@ -150,7 +204,12 @@ impl LitraMcpServer {
     }
 
     #[tool(
-        description = "Increase the brightness of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Increase the brightness of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn litra_brightness_up(
         &self,
@@ -171,7 +230,12 @@ impl LitraMcpServer {
     }
 
     #[tool(
-        description = "Decrease the brightness of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Decrease the brightness of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn litra_brightness_down(
         &self,
@@ -192,7 +256,12 @@ impl LitraMcpServer {
     }
 
     #[tool(
-        description = "Set the temperature of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Set the temperature of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn litra_temperature(
         &self,
@@ -212,7 +281,12 @@ impl LitraMcpServer {
     }
 
     #[tool(
-        description = "Increase the temperature of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Increase the temperature of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn litra_temperature_up(
         &self,
@@ -232,7 +306,12 @@ impl LitraMcpServer {
     }
 
     #[tool(
-        description = "Decrease the temperature of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type."
+        description = "Decrease the temperature of Logitech Litra device(s). By default, all devices will be targeted, but you can optionally specify a serial number, device path, or device type.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn litra_temperature_down(
         &self,
@@ -251,26 +330,199 @@ impl LitraMcpServer {
         }
     }
 
-    #[tool(description = "List Logitech Litra devices connected to computer")]
-    async fn litra_devices(&self) -> Result<CallToolResult, McpError> {
+    #[tool(
+        description = "Turn the back light of Logitech Litra Beam LX device(s) on. By default, all Litra Beam LX devices will be targeted, but you can optionally specify a serial number or device path.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn litra_back_on(
+        &self,
+        Parameters(params): Parameters<LitraBackToolParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match handle_back_on_command(
+            params.serial_number.as_deref(),
+            params.device_path.as_deref(),
+        ) {
+            Ok(()) => Ok(CallToolResult::success(vec![Content::text(
+                "Back light turned on successfully for device(s)",
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Turn the back light of Logitech Litra Beam LX device(s) off. By default, all Litra Beam LX devices will be targeted, but you can optionally specify a serial number or device path.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn litra_back_off(
+        &self,
+        Parameters(params): Parameters<LitraBackToolParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match handle_back_off_command(
+            params.serial_number.as_deref(),
+            params.device_path.as_deref(),
+        ) {
+            Ok(()) => Ok(CallToolResult::success(vec![Content::text(
+                "Back light turned off successfully for device(s)",
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Toggle the back light of Logitech Litra Beam LX device(s) on or off. By default, all Litra Beam LX devices will be targeted, but you can optionally specify a serial number or device path.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
+    async fn litra_back_toggle(
+        &self,
+        Parameters(params): Parameters<LitraBackToolParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match handle_back_toggle_command(
+            params.serial_number.as_deref(),
+            params.device_path.as_deref(),
+        ) {
+            Ok(()) => Ok(CallToolResult::success(vec![Content::text(
+                "Back light toggled successfully for device(s)",
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Set the brightness of the back light on Logitech Litra Beam LX device(s). By default, all Litra Beam LX devices will be targeted, but you can optionally specify a serial number or device path.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn litra_back_brightness(
+        &self,
+        Parameters(params): Parameters<LitraBackBrightnessParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match handle_back_brightness_command(
+            params.serial_number.as_deref(),
+            params.device_path.as_deref(),
+            params.percentage,
+        ) {
+            Ok(()) => Ok(CallToolResult::success(vec![Content::text(
+                "Back light brightness set successfully for device(s)",
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Increase the brightness of the back light on Logitech Litra Beam LX device(s). By default, all Litra Beam LX devices will be targeted, but you can optionally specify a serial number or device path.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
+    async fn litra_back_brightness_up(
+        &self,
+        Parameters(params): Parameters<LitraBackBrightnessParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match handle_back_brightness_up_command(
+            params.serial_number.as_deref(),
+            params.device_path.as_deref(),
+            params.percentage,
+        ) {
+            Ok(()) => Ok(CallToolResult::success(vec![Content::text(
+                "Back light brightness increased successfully for device(s)",
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Decrease the brightness of the back light on Logitech Litra Beam LX device(s). By default, all Litra Beam LX devices will be targeted, but you can optionally specify a serial number or device path.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
+    async fn litra_back_brightness_down(
+        &self,
+        Parameters(params): Parameters<LitraBackBrightnessParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match handle_back_brightness_down_command(
+            params.serial_number.as_deref(),
+            params.device_path.as_deref(),
+            params.percentage,
+        ) {
+            Ok(()) => Ok(CallToolResult::success(vec![Content::text(
+                "Back light brightness decreased successfully for device(s)",
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "Set the color of the back light on Logitech Litra Beam LX device(s). By default, all Litra Beam LX devices will be targeted, but you can optionally specify a serial number or device path. Can target a specific zone (1-7) or all zones.",
+        annotations(
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn litra_back_color(
+        &self,
+        Parameters(params): Parameters<LitraBackColorParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match handle_back_color_command(
+            params.serial_number.as_deref(),
+            params.device_path.as_deref(),
+            &params.hex,
+            params.zone_id,
+        ) {
+            Ok(()) => Ok(CallToolResult::success(vec![Content::text(
+                "Back light color set successfully for device(s)",
+            )])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        }
+    }
+
+    #[tool(
+        description = "List Logitech Litra devices connected to computer",
+        annotations(read_only_hint = true, open_world_hint = false)
+    )]
+    async fn litra_devices(&self) -> Result<Json<DeviceListResponse>, McpError> {
         let litra_devices =
             get_connected_devices().map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-        let json_str = serde_json::to_string_pretty(&litra_devices)
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-        Ok(CallToolResult::success(vec![Content::text(json_str)]))
+        Ok(Json(DeviceListResponse {
+            devices: litra_devices,
+        }))
     }
 }
 
 #[tool_handler]
 impl ServerHandler for LitraMcpServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            protocol_version: ProtocolVersion::V_2025_03_26,
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
-            server_info: Implementation::from_build_env(),
-            instructions: None,
-        }
+        let mut server_info =
+            Implementation::new(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        server_info.title = Some("Litra".to_owned());
+        server_info.website_url = Some("https://github.com/timrogers/litra-rs".to_owned());
+
+        let mut server = ServerInfo::new(ServerCapabilities::builder().enable_tools().build());
+        server.protocol_version = ProtocolVersion::V_2025_03_26;
+        server.server_info = server_info;
+        server.instructions = None;
+        server
     }
 }
 
