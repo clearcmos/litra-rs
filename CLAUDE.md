@@ -49,7 +49,7 @@ The Rust toolchain is pinned via `rust-toolchain.toml`. Linux builds require `li
 
 ## Fork changes (relative to `timrogers/litra-rs:main`)
 
-As of this writing the fork is 3 commits ahead of and 131 commits behind upstream.
+As of the last sync the fork is up to date with upstream (merged through upstream's `47e838c`, v3.3.0 + post-release dep bumps) and adds the changes below on top.
 
 ### Added by this fork
 
@@ -67,20 +67,9 @@ As of this writing the fork is 3 commits ahead of and 131 commits behind upstrea
 
 3. CI workflow tweaks in `.github/workflows/build_and_release.yml` and `pre-commit.yml` to accommodate the new feature flag.
 
-### Not yet pulled from upstream
+### Pulling future upstream changes
 
-Substantive features available upstream that this fork is missing:
-
-- v3.0.0 Litra Beam LX RGB and back-side control (`back-toggle`, `back-brightness-up/down`, `back-color`, matching MCP tools, `has_back_side` field)
-- v3.1.0 `--color` preset names for `back-color`
-- v3.1.1 stable device sort, `--device-path`/`--serial-number` fixes for `back-*`
-- v3.2.0 Windows ARM64 builds
-- v3.3.0 auto update check (`LITRA_DISABLE_UPDATE_CHECK`, `.litra.toml` daily limit)
-- v2.5.0/2.5.1 MCP tool annotations, structured outputs, rmcp 0.12 upgrade
-- v2.4.1 brightness percentage 0/1 fix
-- Many dependency bumps
-
-When rebasing onto upstream, expect conflicts in `src/main.rs`, `src/mcp.rs`, `Cargo.toml`, `Cargo.lock`, and the build workflow. The new menubar feature gate and binary entry need to survive the rebase; `tray/` is self-contained and should not conflict.
+The library code in `src/lib.rs` / `src/main.rs` / `src/mcp.rs` does not overlap with `src/menubar.rs` or `tray/`, so future upstream merges should typically only conflict in `Cargo.toml` (when both sides change `[dependencies]`) and `Cargo.lock` (regenerate with `cargo build`, don't hand-merge). Keep both upstream's deps and the fork's `eframe`/`tray-icon` lines, and ensure the `[features]` block keeps `menubar = ["dep:eframe", "dep:tray-icon"]` plus the `[[bin]]` entry for `litra-menubar`.
 
 ## Useful references
 
