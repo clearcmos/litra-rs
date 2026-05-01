@@ -1,6 +1,6 @@
 pkgname=litra-custom
 pkgdesc='CLI, MCP server, and KDE Plasma plasmoid for Logitech Litra lights (clearcmos fork)'
-pkgver=3.3.0.r305.a74149b
+pkgver=3.3.0.r306.762ee60
 pkgrel=1
 arch=('x86_64')
 url='https://github.com/clearcmos/litra-rs'
