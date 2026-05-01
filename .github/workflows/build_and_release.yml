@@ -5,6 +5,10 @@ on: push
 jobs:
   build:
     name: Build and test
+    # Fork guard: only run on upstream where signing certs / crates.io
+    # tokens / release publishing actually exist. Forks skip the entire
+    # workflow so they don't get failure emails for unsignable macOS jobs.
+    if: github.repository == 'timrogers/litra-rs'
     strategy:
       fail-fast: false
       matrix:
