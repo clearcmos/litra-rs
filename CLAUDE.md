@@ -59,7 +59,7 @@ cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-features --all-targets -- -D warnings
 cargo test --locked --workspace --all-features
 node --test tray-plasmoid/tests/*.test.mjs
-qmllint6 --unqualified disable tray-plasmoid/package/contents/ui/main.qml tray-plasmoid/package/contents/code/litra.mjs
+bash tray-plasmoid/tests/run-qmllint.sh
 shellcheck tray-plasmoid/install.sh
 shellcheck --shell=bash --exclude=SC2034,SC2154,SC2164 PKGBUILD
 bash tray-plasmoid/tests/check-packaging.sh
@@ -68,7 +68,7 @@ bash tray-plasmoid/tests/check-packaging.sh
 Notes:
 
 - `--all-features` is what pulls `src/menubar.rs` into scope. Without it the fork's own Rust file is compiled by nothing.
-- `qmllint` is `/usr/lib/qt6/bin/qmllint` on Arch; `/usr/bin/qmllint` is the Qt 5 binary and will silently pass anything Plasma 6. `--unqualified disable` is required because `i18n()` is injected by Plasma's QML engine and no linter can resolve it; every other qmllint category stays on.
+- Do not call `qmllint` directly. There is no portable name for the Qt 6 binary: it is `/usr/lib/qt6/bin/qmllint` on Arch, where plain `/usr/bin/qmllint` is Qt 5 and exits 0 on Plasma 6 QML without reading it; Ubuntu runners have neither on PATH under any name. `run-qmllint.sh` resolves it and asserts the major version. Override with `QMLLINT=/path/to/qmllint` if needed.
 - `src/menubar.rs` has no tests by choice. It is a macOS-oriented egui/`tray-icon` event loop, it is not run on the Linux workstation this fork is maintained from, and fabricating tests for a GUI loop would be filler. CI compiles, formats and clippy-lints it so it cannot rot silently.
 
 ## Code style

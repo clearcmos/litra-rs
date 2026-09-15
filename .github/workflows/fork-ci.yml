@@ -81,14 +81,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qt6-declarative-dev-tools
 
-      # `unqualified` is disabled because i18n() is injected by Plasma's QML
-      # engine and no linter can resolve it. Every other qmllint check, which
-      # is most of them, stays on.
+      # The script resolves the Qt 6 binary itself. There is no portable name
+      # for it, and picking up a Qt 5 qmllint would exit 0 without reading the
+      # file, so it asserts the major version rather than trusting PATH.
       - name: qmllint
-        run: |
-          qmllint6 --unqualified disable \
-            tray-plasmoid/package/contents/ui/main.qml \
-            tray-plasmoid/package/contents/code/litra.mjs
+        run: bash tray-plasmoid/tests/run-qmllint.sh
 
       - name: shellcheck
         run: shellcheck tray-plasmoid/install.sh
