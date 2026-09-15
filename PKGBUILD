@@ -51,12 +51,13 @@ package() {
     # KDE Plasma 6 plasmoid (system-wide). Plasmoid files are inert without
     # plasma-workspace, so this is safe to ship unconditionally.
     local plasmoid_dir="$pkgdir/usr/share/plasma/plasmoids/io.github.clearcmos.litra"
-    install -d "$plasmoid_dir/contents/ui"
-    install -d "$plasmoid_dir/contents/icons"
-    install -Dm644 tray-plasmoid/package/metadata.json "$plasmoid_dir/metadata.json"
-    install -Dm644 tray-plasmoid/package/contents/ui/main.qml "$plasmoid_dir/contents/ui/main.qml"
-    install -Dm644 tray-plasmoid/package/contents/icons/lightbulb-on.svg "$plasmoid_dir/contents/icons/lightbulb-on.svg"
-    install -Dm644 tray-plasmoid/package/contents/icons/lightbulb-off.svg "$plasmoid_dir/contents/icons/lightbulb-off.svg"
+    # Copy the package tree wholesale rather than naming each file. An earlier
+    # per-file list silently dropped a JS module that main.qml imports, which
+    # installs a widget that will not load at all.
+    install -d "$plasmoid_dir"
+    cp -r tray-plasmoid/package/. "$plasmoid_dir/"
+    find "$plasmoid_dir" -type d -exec chmod 755 {} +
+    find "$plasmoid_dir" -type f -exec chmod 644 {} +
 
     # License
     install -Dm644 LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE.md"

@@ -184,8 +184,10 @@ A native KDE Plasma 6 plasmoid (QML widget) lives in [`tray-plasmoid/`](tray-pla
 
 **Features:**
 - Native Plasma 6 system tray integration with proper popup anchoring
-- Real-time brightness and temperature control via `litra`
-- Custom lightbulb icon (lit when on, outline when off)
+- Reads the device on a timer, so the icon, sliders and tooltip follow the light even when something else changes it: a shell, a keybinding, the MCP server, or the button on the light itself
+- Brightness and temperature sliders, throttled to roughly 12 Hz, live whether the light is on or off (the device stores both while it is off)
+- Custom lightbulb icon, lit only when the hardware reports the light as on
+- Middle-click the tray icon to toggle power without opening the popup
 
 **Install (Arch via the bundled PKGBUILD):**
 
@@ -200,6 +202,17 @@ Then add the widget: right-click panel/system tray > **Add or Manage Widgets** >
 ```bash
 cd tray-plasmoid && ./install.sh
 kquitapp6 plasmashell && (setsid plasmashell &) >/dev/null 2>&1
+```
+
+**Tests:**
+
+The widget's parsing and unit-conversion logic lives in
+[`tray-plasmoid/package/contents/code/litra.mjs`](tray-plasmoid/package/contents/code/litra.mjs),
+a plain ECMAScript module that QML and Node both load unchanged, so it can be
+tested without Qt, Plasma or a connected light:
+
+```bash
+node --test tray-plasmoid/tests/*.test.mjs
 ```
 
 ### From a Rust application
