@@ -6,11 +6,11 @@
 #                    check. Run it on a workstation with Plasma before trusting
 #                    that the QML is clean.
 #
-#   --parse-only     Parse check with qmlformat. For machines that have the Qt
-#                    tools but none of the QML modules, which is every GitHub
-#                    runner. It only answers "does this file parse", but a
-#                    syntax error in main.qml breaks the widget outright, so it
-#                    is worth gating.
+#   --parse-only     Parse check on main.qml with qmlformat. For machines that
+#                    have the Qt tools but none of the QML modules, which is
+#                    every GitHub runner. It only answers "does it parse", but
+#                    a syntax error there breaks the widget outright, so it is
+#                    worth gating. litra.mjs is covered by node --test.
 #
 # Why two tools rather than qmllint in both modes: with no modules to resolve
 # against, PlasmoidItem and every Plasma property are unknown names, and
@@ -102,14 +102,16 @@ if [ "$parse_only" -eq 1 ]; then
     version=$(require_qt6 "$qmlformat" qmlformat)
     echo "using $qmlformat ($version): parse check only, no QML modules available"
 
-    status=0
-    for file in "$qml_file" "$js_file"; do
-        if ! "$qmlformat" "$file" >/dev/null; then
-            echo "FAIL: $file does not parse" >&2
-            status=1
-        fi
-    done
-    exit "$status"
+    # main.qml only. qmlformat 6.4 on ubuntu-latest cannot detect the type of a
+    # .mjs file and errors out, while 6.11 handles it, so passing it here just
+    # reintroduces a version dependency. It needs no cover from this script:
+    # litra.mjs is imported by the unit tests, and `node --test` fails on a
+    # syntax error in it before any assertion runs.
+    if ! "$qmlformat" "$qml_file" >/dev/null; then
+        echo "FAIL: $qml_file does not parse" >&2
+        exit 1
+    fi
+    exit 0
 fi
 
 qmllint=$(find_qt_tool qmllint "${QMLLINT:-}")
