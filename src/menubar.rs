@@ -4,7 +4,7 @@ use eframe::egui;
 use litra::{DeviceHandle, Litra};
 use std::sync::{Arc, Mutex};
 use tray_icon::menu::MenuEvent;
-use tray_icon::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
+use tray_icon::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
 /// Application state shared between UI and background tasks
 struct AppState {
@@ -56,7 +56,10 @@ impl AppState {
                     self.error_message = None;
                 }
                 Err(e) => {
-                    eprintln!("Warning: Failed to read power state (device may be in standby): {}", e);
+                    eprintln!(
+                        "Warning: Failed to read power state (device may be in standby): {}",
+                        e
+                    );
                     // Assume device is off if we can't read the state
                     self.power_on = false;
                     self.error_message = None;
@@ -105,7 +108,7 @@ impl AppState {
                 let rounded_temp = (self.temperature / 100) * 100;
                 let clamped_temp = rounded_temp.clamp(
                     handle.minimum_temperature_in_kelvin(),
-                    handle.maximum_temperature_in_kelvin()
+                    handle.maximum_temperature_in_kelvin(),
                 );
 
                 if let Err(e) = handle.set_temperature_in_kelvin(clamped_temp) {
@@ -159,8 +162,16 @@ impl eframe::App for LitraMenuBarApp {
         if let Ok(event) = TrayIconEvent::receiver().try_recv() {
             eprintln!("DEBUG: Got tray event: {:?}", event);
             match event {
-                TrayIconEvent::Click { button, button_state, rect, .. } => {
-                    eprintln!("DEBUG: Click event - button: {:?}, state: {:?}, rect: {:?}", button, button_state, rect);
+                TrayIconEvent::Click {
+                    button,
+                    button_state,
+                    rect,
+                    ..
+                } => {
+                    eprintln!(
+                        "DEBUG: Click event - button: {:?}, state: {:?}, rect: {:?}",
+                        button, button_state, rect
+                    );
                     if button == MouseButton::Left && button_state == MouseButtonState::Up {
                         // Toggle window visibility on left click
                         let mut vis = self.visible.lock().unwrap();
@@ -170,7 +181,8 @@ impl eframe::App for LitraMenuBarApp {
                         if *vis {
                             // Position window below the menu bar icon, centered under it
                             // Get the scale factor for retina displays
-                            let scale_factor = ctx.input(|i| i.viewport().native_pixels_per_point.unwrap_or(2.0));
+                            let scale_factor =
+                                ctx.input(|i| i.viewport().native_pixels_per_point.unwrap_or(2.0));
 
                             // Convert physical pixels to logical pixels
                             let icon_x = rect.position.x as f32 / scale_factor;
@@ -184,10 +196,18 @@ impl eframe::App for LitraMenuBarApp {
                             let y = icon_y + icon_height; // Just below the icon
 
                             eprintln!("DEBUG: Scale factor: {}", scale_factor);
-                            eprintln!("DEBUG: Icon rect (physical) - x={}, y={}, width={}, height={}", rect.position.x, rect.position.y, rect.size.width, rect.size.height);
-                            eprintln!("DEBUG: Icon rect (logical) - x={}, y={}, width={}, height={}", icon_x, icon_y, icon_width, icon_height);
+                            eprintln!(
+                                "DEBUG: Icon rect (physical) - x={}, y={}, width={}, height={}",
+                                rect.position.x, rect.position.y, rect.size.width, rect.size.height
+                            );
+                            eprintln!(
+                                "DEBUG: Icon rect (logical) - x={}, y={}, width={}, height={}",
+                                icon_x, icon_y, icon_width, icon_height
+                            );
                             eprintln!("DEBUG: Positioning window at x={}, y={} (icon_center={}, window_width={})", x, y, icon_center_x, window_width);
-                            ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::Pos2::new(x, y)));
+                            ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(
+                                egui::Pos2::new(x, y),
+                            ));
                             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                         }
                     }
@@ -225,8 +245,15 @@ impl eframe::App for LitraMenuBarApp {
             let mut state = self.state.lock().unwrap();
 
             // Device selection - collect device info separately to avoid borrow issues
-            let device_info: Vec<(String, String)> = state.context.get_connected_devices()
-                .map(|d| (d.device_type().to_string(), d.device_path().chars().take(20).collect()))
+            let device_info: Vec<(String, String)> = state
+                .context
+                .get_connected_devices()
+                .map(|d| {
+                    (
+                        d.device_type().to_string(),
+                        d.device_path().chars().take(20).collect(),
+                    )
+                })
                 .collect();
 
             if device_info.is_empty() {
@@ -237,21 +264,22 @@ impl eframe::App for LitraMenuBarApp {
             ui.horizontal(|ui| {
                 ui.label("Device:");
                 egui::ComboBox::from_id_salt("device_selector")
-                    .selected_text(
-                        if let Some(index) = state.selected_device_index {
-                            if let Some((dtype, path)) = device_info.get(index) {
-                                format!("{} ({})", dtype, path)
-                            } else {
-                                "Select device...".to_string()
-                            }
+                    .selected_text(if let Some(index) = state.selected_device_index {
+                        if let Some((dtype, path)) = device_info.get(index) {
+                            format!("{} ({})", dtype, path)
                         } else {
                             "Select device...".to_string()
                         }
-                    )
+                    } else {
+                        "Select device...".to_string()
+                    })
                     .show_ui(ui, |ui| {
                         for (i, (dtype, path)) in device_info.iter().enumerate() {
                             let label = format!("{} ({})", dtype, path);
-                            if ui.selectable_label(state.selected_device_index == Some(i), label).clicked() {
+                            if ui
+                                .selectable_label(state.selected_device_index == Some(i), label)
+                                .clicked()
+                            {
                                 state.selected_device_index = Some(i);
                                 state.refresh_from_device();
                             }
@@ -280,13 +308,23 @@ impl eframe::App for LitraMenuBarApp {
             if state.power_on {
                 ui.label("Brightness (lumen):");
 
-                let (min_brightness, max_brightness) = if let Some(handle) = state.get_device_handle() {
-                    (handle.minimum_brightness_in_lumen(), handle.maximum_brightness_in_lumen())
-                } else {
-                    (20, 400)
-                };
+                let (min_brightness, max_brightness) =
+                    if let Some(handle) = state.get_device_handle() {
+                        (
+                            handle.minimum_brightness_in_lumen(),
+                            handle.maximum_brightness_in_lumen(),
+                        )
+                    } else {
+                        (20, 400)
+                    };
 
-                if ui.add(egui::Slider::new(&mut state.brightness, min_brightness..=max_brightness)).changed() {
+                if ui
+                    .add(egui::Slider::new(
+                        &mut state.brightness,
+                        min_brightness..=max_brightness,
+                    ))
+                    .changed()
+                {
                     // Apply brightness change in real-time
                     if let Some(handle) = state.get_device_handle() {
                         let _ = handle.set_brightness_in_lumen(state.brightness);
@@ -297,8 +335,10 @@ impl eframe::App for LitraMenuBarApp {
 
                 // Temperature control
                 ui.label("Temperature (Kelvin):");
-                if ui.add(egui::Slider::new(&mut state.temperature, 2700..=6500)
-                    .step_by(100.0)).changed() {
+                if ui
+                    .add(egui::Slider::new(&mut state.temperature, 2700..=6500).step_by(100.0))
+                    .changed()
+                {
                     // Apply temperature change in real-time
                     if let Some(handle) = state.get_device_handle() {
                         let rounded_temp = (state.temperature / 100) * 100;
@@ -383,9 +423,9 @@ fn create_icon_data() -> tray_icon::Icon {
             let idx = (y * size + x) * 4;
             if dist_sq <= radius_sq {
                 // Yellow circle
-                rgba[idx] = 255;     // R
+                rgba[idx] = 255; // R
                 rgba[idx + 1] = 255; // G
-                rgba[idx + 2] = 0;   // B
+                rgba[idx + 2] = 0; // B
                 rgba[idx + 3] = 255; // A
             } else {
                 // Transparent background
@@ -394,6 +434,5 @@ fn create_icon_data() -> tray_icon::Icon {
         }
     }
 
-    tray_icon::Icon::from_rgba(rgba, size as u32, size as u32)
-        .expect("Failed to create icon")
+    tray_icon::Icon::from_rgba(rgba, size as u32, size as u32).expect("Failed to create icon")
 }

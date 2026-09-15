@@ -10,8 +10,11 @@ Personal fork of [`timrogers/litra-rs`](https://github.com/timrogers/litra-rs), 
 - `src/menubar.rs` - **fork addition.** `litra-menubar` binary (egui + `tray-icon`). macOS menu bar icon with a popup window for power/brightness/temperature control of the selected device.
 - `tray-plasmoid/` - **fork addition.** KDE Plasma 6 plasmoid (QML, `PlasmoidItem`). Shells out to the `litra` CLI; gets popup positioning automatically from Plasma's systray.
   - `tray-plasmoid/package/metadata.json` - plasmoid manifest (`X-Plasma-API-Minimum-Version: 6.0`).
-  - `tray-plasmoid/package/contents/ui/main.qml` - the plasmoid (compact + full representations, throttled slider commands at ~12 Hz).
+  - `tray-plasmoid/package/contents/ui/main.qml` - the plasmoid (compact + full representations, throttled slider commands at ~12 Hz, device polled on a timer).
+  - `tray-plasmoid/package/contents/code/litra.mjs` - pure parsing and unit-conversion helpers. An ES module so QML (`import "../code/litra.mjs" as Litra`, Qt 6 treats `.mjs` as ECMAScript) and `node --test` load the identical file. Keep it free of Qt and Plasma references; it is the only part of the widget that is unit-testable.
   - `tray-plasmoid/package/contents/icons/lightbulb-{on,off}.svg` - custom tray icons (the on-icon is a warm-yellow bulb with a glow halo, the off-icon is an outline that follows the panel's `currentColor`).
+  - `tray-plasmoid/tests/litra.test.mjs` - unit tests for the helpers above; no Qt, no device.
+  - `tray-plasmoid/tests/check-packaging.sh` - runs the real `package()` from `PKGBUILD` against a scratch tree and asserts every file under `tray-plasmoid/package/` reaches the installed widget.
   - `tray-plasmoid/install.sh` - dev-mode installer; uses `kpackagetool6` to install/upgrade into `~/.local/share/plasma/plasmoids/`. The `PKGBUILD` does the same job system-wide.
 - `PKGBUILD` - **fork addition.** Arch package (`litra-custom`) that builds the `litra` CLI, drops the udev rule into `/usr/lib/udev/rules.d/`, and installs the plasmoid system-wide to `/usr/share/plasma/plasmoids/io.github.clearcmos.litra/`. `optdepends` plasma-workspace.
 - `99-litra.rules` - udev rules for non-root USB access on Linux (upstream).
@@ -47,11 +50,34 @@ kquitapp6 plasmashell && (setsid plasmashell &) >/dev/null 2>&1
 
 The Rust toolchain is pinned via `rust-toolchain.toml`. Linux builds require `libudev-dev` (and `libhidapi-dev` upstream, though hidapi is currently vendored in this fork).
 
+## Checks
+
+Every one of these runs in `.github/workflows/fork-ci.yml`. One line each:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --locked --workspace --all-features --all-targets -- -D warnings
+cargo test --locked --workspace --all-features
+node --test tray-plasmoid/tests/*.test.mjs
+qmllint6 --unqualified disable tray-plasmoid/package/contents/ui/main.qml tray-plasmoid/package/contents/code/litra.mjs
+shellcheck tray-plasmoid/install.sh
+shellcheck --shell=bash --exclude=SC2034,SC2154,SC2164 PKGBUILD
+bash tray-plasmoid/tests/check-packaging.sh
+```
+
+Notes:
+
+- `--all-features` is what pulls `src/menubar.rs` into scope. Without it the fork's own Rust file is compiled by nothing.
+- `qmllint` is `/usr/lib/qt6/bin/qmllint` on Arch; `/usr/bin/qmllint` is the Qt 5 binary and will silently pass anything Plasma 6. `--unqualified disable` is required because `i18n()` is injected by Plasma's QML engine and no linter can resolve it; every other qmllint category stays on.
+- `src/menubar.rs` has no tests by choice. It is a macOS-oriented egui/`tray-icon` event loop, it is not run on the Linux workstation this fork is maintained from, and fabricating tests for a GUI loop would be filler. CI compiles, formats and clippy-lints it so it cannot rot silently.
+
 ## Code style
 
 - Upstream uses `cargo fmt` and `cargo clippy`. Match that. Pre-commit workflow runs both.
 - Don't introduce em dashes or double dashes in new prose (project rule).
 - Plasmoid QML keeps imports versionless (Plasma 6 / Qt6 style) and uses `Plasma5Support.DataSource` with the `executable` engine for shell calls. Slider-driven commands are throttled (`sliderThrottleMs = 80`) with a trailing fire to avoid flooding the device.
+- `main.qml` carries `pragma ComponentBehavior: Bound` so `root` resolves inside the representation Components. Without it qmllint reports every such access as unqualified, which buries real findings.
+- New plasmoid logic that can be written as a pure function belongs in `contents/code/litra.mjs` with a test, not inline in `main.qml`. QML in a Plasma widget is only testable by installing it and looking at the panel.
 
 ## Fork changes (relative to `timrogers/litra-rs:main`)
 
@@ -76,6 +102,35 @@ As of the last sync the fork is up to date with upstream (merged through upstrea
    - `options=(!lto)` because makepkg's default `-flto=auto` breaks the cc-rs archive step for hidapi's vendored C source (`libhidapi.a` ends up missing entirely, link fails with undefined `hid_*`).
 
 4. CI workflow tweaks in `.github/workflows/build_and_release.yml` and `pre-commit.yml` to accommodate the `menubar` feature flag.
+
+5. **`.github/workflows/fork-ci.yml`** - fork-only CI covering the additions above. Kept as a separate file so upstream changes to its own workflows never conflict, and guarded `if: github.repository != 'timrogers/litra-rs'` so it no-ops if upstream ever inherits a copy.
+
+6. `.editorconfig`.
+
+## Decision log
+
+### 2026-09-14 - the tray icon lied about the light
+
+The plasmoid showed a lit bulb over a light that was off. `main.qml` held `lightOn` as a local boolean initialised `false` and only ever flipped by `togglePower()`; nothing ever read the hardware. Any out-of-band change (`litra off` from a shell or keybinding, the MCP server, the button on the light, a second machine) desynced the widget permanently, and a plasmashell restart reset it to "off" no matter what the light was doing. Brightness and temperature had the same problem: they started at a hardcoded 50% / 4500K rather than the device's real values.
+
+Fixed by making the device authoritative. `main.qml` now polls `litra devices --json` (1.5 s expanded, 5 s collapsed, plus an immediate read at load via `triggeredOnStart`) and drives every property from the reply.
+
+Things that fix depends on, learned the hard way:
+
+- **Per-field settle windows, not a global one.** A poll issued just before a command lands reports the pre-command state and undoes the user's own click. Power, brightness and temperature each hold their own 900 ms window, so an out-of-band power change still lands while a slider is being dragged.
+- **Drag state lives on `root`.** The sliders are inside `fullRepresentation`, which Plasma destroys when the popup closes, so the poll handler cannot reach `brightnessSlider.pressed`. The flags are hoisted to `root` and cleared on collapse.
+- **One chained shell command, not three sources.** `Plasma5Support.DataSource` runs separate sources concurrently, so the old `litra on` + `brightness` + `temperature` triple raced three processes for the same HID handle. They are now `&&`-chained into one.
+- **Sliders stay live while the light is off.** Verified against the hardware: the device stores brightness and temperature while off and stays off. The old code gated them on `lightOn`, which with polling would make the control appear to do nothing and then snap back.
+- **`LITRA_DISABLE_UPDATE_CHECK=1` on the poll.** The CLI otherwise makes a daily network call, from inside plasmashell.
+- **Self-healing in-flight guard.** One read at a time, but a source that never returns must not wedge polling for the session, so the guard expires after 10 s.
+
+### 2026-09-14 - the plasmoid shipped without a file it imports
+
+Extracting the helpers into `contents/code/litra.mjs` exposed a packaging defect: `PKGBUILD`'s `package()` named each plasmoid file individually, so a new file is shipped only if someone remembers to add a line. A plasmoid missing an imported module does not degrade, it fails to load outright. `package()` now copies the package tree wholesale, and `tray-plasmoid/tests/check-packaging.sh` runs the real `package()` and fails if any source file goes missing. The gate was confirmed to fail against the old per-file version before being wired into CI.
+
+### 2026-09-14 - fork CI ran no tests at all
+
+`build_and_release.yml` carries `if: github.repository == 'timrogers/litra-rs'`, a deliberate upstream fork guard so forks do not get failure mail for unsignable macOS release jobs. The side effect was that `cargo test` never ran on this fork; only `pre-commit.yml` (fmt, cargo-check, clippy) did, and `src/menubar.rs` had drifted out of `cargo fmt` compliance unnoticed. Rather than loosen upstream's guard, which would conflict on every upstream merge, the fork got its own `fork-ci.yml`.
 
 ### Pulling future upstream changes
 
