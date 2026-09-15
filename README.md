@@ -1,3 +1,10 @@
+> **This fork is retired.** Its KDE Plasma plasmoid and macOS menubar app moved to
+> **[clearcmos/litra-desktop](https://github.com/clearcmos/litra-desktop)**, which vendors no
+> upstream code: the plasmoid shells out to the `litra` CLI and the menubar app uses the
+> `litra` crate from crates.io. This fork changed zero lines of upstream Rust, so there was
+> nothing here that needed to be a fork. For the CLI and library, use
+> [`timrogers/litra-rs`](https://github.com/timrogers/litra-rs) directly.
+
 # `litra-rs`
 
 💡 Control Logitech Litra lights from the command line, Model Context Protocol (MCP) clients and Rust applications
