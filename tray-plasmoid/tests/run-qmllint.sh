@@ -12,6 +12,19 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 
+# --no-imports drops the `import` category, for machines that have qmllint but
+# not the QtQuick and Plasma 6 QML modules it would need to resolve them. CI
+# runners are the case that matters: without this every import is an error and
+# the run says nothing about the code. What survives is still worth gating on
+# (syntax, JS semantics, duplicated and misspelled members); what is lost is
+# type resolution against Plasma's types, which only a machine with Plasma
+# installed can do. Run it without the flag there, which is the default.
+check_imports=1
+if [ "${1:-}" = "--no-imports" ]; then
+    check_imports=0
+    shift
+fi
+
 find_qmllint() {
     if [ -n "${QMLLINT:-}" ]; then
         echo "$QMLLINT"
@@ -63,11 +76,18 @@ if [ "${major:-0}" -lt 6 ]; then
     exit 1
 fi
 
-echo "using $qmllint ($version)"
-
 # `unqualified` is off because i18n() is injected into the QML engine by Plasma
 # at runtime and cannot be resolved by any linter. Every other qmllint category
 # stays on, which is where the findings worth having come from.
-exec "$qmllint" --unqualified disable \
+args=(--unqualified disable)
+
+if [ "$check_imports" -eq 1 ]; then
+    echo "using $qmllint ($version), imports checked"
+else
+    args+=(--import disable)
+    echo "using $qmllint ($version), imports NOT checked"
+fi
+
+exec "$qmllint" "${args[@]}" \
     "$repo_root/tray-plasmoid/package/contents/ui/main.qml" \
     "$repo_root/tray-plasmoid/package/contents/code/litra.mjs"

@@ -69,6 +69,7 @@ Notes:
 
 - `--all-features` is what pulls `src/menubar.rs` into scope. Without it the fork's own Rust file is compiled by nothing.
 - Do not call `qmllint` directly. There is no portable name for the Qt 6 binary: it is `/usr/lib/qt6/bin/qmllint` on Arch, where plain `/usr/bin/qmllint` is Qt 5 and exits 0 on Plasma 6 QML without reading it; Ubuntu runners have neither on PATH under any name. `run-qmllint.sh` resolves it and asserts the major version. Override with `QMLLINT=/path/to/qmllint` if needed.
+- Run it without arguments on this workstation, where Plasma 6 is installed and imports resolve. CI passes `--no-imports` because a GitHub runner has qmllint but none of the QtQuick or Plasma QML modules, so every import there is unresolvable noise. That mode still gates syntax and JS semantics (verified: both modes exit 255 on a deliberately broken `main.qml`); what only the local run covers is type resolution against Plasma's own types.
 - `src/menubar.rs` has no tests by choice. It is a macOS-oriented egui/`tray-icon` event loop, it is not run on the Linux workstation this fork is maintained from, and fabricating tests for a GUI loop would be filler. CI compiles, formats and clippy-lints it so it cannot rot silently.
 
 ## Code style

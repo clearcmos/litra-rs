@@ -84,8 +84,13 @@ jobs:
       # The script resolves the Qt 6 binary itself. There is no portable name
       # for it, and picking up a Qt 5 qmllint would exit 0 without reading the
       # file, so it asserts the major version rather than trusting PATH.
+      #
+      # --no-imports because this runner has qmllint but none of the QtQuick or
+      # Plasma 6 QML modules, so every import is unresolvable here. Syntax and
+      # JS semantics are still gated; type resolution against Plasma's own types
+      # needs a machine with Plasma installed and happens there.
       - name: qmllint
-        run: bash tray-plasmoid/tests/run-qmllint.sh
+        run: bash tray-plasmoid/tests/run-qmllint.sh --no-imports
 
       - name: shellcheck
         run: shellcheck tray-plasmoid/install.sh
