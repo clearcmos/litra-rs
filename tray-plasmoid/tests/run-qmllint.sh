@@ -12,13 +12,20 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 
-# --no-imports drops the `import` category, for machines that have qmllint but
-# not the QtQuick and Plasma 6 QML modules it would need to resolve them. CI
-# runners are the case that matters: without this every import is an error and
-# the run says nothing about the code. What survives is still worth gating on
-# (syntax, JS semantics, duplicated and misspelled members); what is lost is
-# type resolution against Plasma's types, which only a machine with Plasma
-# installed can do. Run it without the flag there, which is the default.
+# --no-imports is for machines that have qmllint but not the QtQuick and Plasma
+# 6 QML modules, which is every GitHub runner. There it degrades to a parse
+# check: syntax in both the QML and the JS, and the structural categories that
+# need no type information. It cannot check anything else, because with no
+# modules to resolve against, `PlasmoidItem` and every Plasma property are
+# simply unknown names. Disabling those categories is not hiding findings, it
+# is declining to report the same missing-modules fact 26 times.
+#
+# The flags below are exactly what CI runs, `--bare` included, so this mode
+# reproduces the runner locally on a machine that does have Plasma. Use it to
+# debug a CI-only qmllint failure.
+#
+# Without the flag, on a machine with Plasma installed, the full check runs and
+# types do resolve. That is the real lint and it is the default.
 check_imports=1
 if [ "${1:-}" = "--no-imports" ]; then
     check_imports=0
@@ -82,10 +89,10 @@ fi
 args=(--unqualified disable)
 
 if [ "$check_imports" -eq 1 ]; then
-    echo "using $qmllint ($version), imports checked"
+    echo "using $qmllint ($version): full check, types resolved"
 else
-    args+=(--import disable)
-    echo "using $qmllint ($version), imports NOT checked"
+    args+=(--bare --import disable --unresolved-type disable --missing-property disable)
+    echo "using $qmllint ($version): parse check only, no QML modules available"
 fi
 
 exec "$qmllint" "${args[@]}" \

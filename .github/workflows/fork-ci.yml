@@ -85,11 +85,12 @@ jobs:
       # for it, and picking up a Qt 5 qmllint would exit 0 without reading the
       # file, so it asserts the major version rather than trusting PATH.
       #
-      # --no-imports because this runner has qmllint but none of the QtQuick or
-      # Plasma 6 QML modules, so every import is unresolvable here. Syntax and
-      # JS semantics are still gated; type resolution against Plasma's own types
-      # needs a machine with Plasma installed and happens there.
-      - name: qmllint
+      # A parse check, not a full lint: this runner has qmllint but none of the
+      # QtQuick or Plasma 6 QML modules, so no type here can be resolved. What
+      # this gates is that main.qml and litra.mjs parse, which is worth having,
+      # since a syntax error in either breaks the widget outright. The full
+      # lint runs on a machine with Plasma installed (see CLAUDE.md).
+      - name: QML and JS parse check
         run: bash tray-plasmoid/tests/run-qmllint.sh --no-imports
 
       - name: shellcheck
