@@ -15,6 +15,7 @@ Personal fork of [`timrogers/litra-rs`](https://github.com/timrogers/litra-rs), 
   - `tray-plasmoid/package/contents/icons/lightbulb-{on,off}.svg` - custom tray icons (the on-icon is a warm-yellow bulb with a glow halo, the off-icon is an outline that follows the panel's `currentColor`).
   - `tray-plasmoid/tests/litra.test.mjs` - unit tests for the helpers above; no Qt, no device.
   - `tray-plasmoid/tests/check-packaging.sh` - runs the real `package()` from `PKGBUILD` against a scratch tree and asserts every file under `tray-plasmoid/package/` reaches the installed widget.
+  - `tray-plasmoid/tests/run-qml-checks.sh` - resolves the Qt 6 tools and runs either the full qmllint (default, needs Plasma installed) or a `qmlformat` parse check (`--parse-only`, used by CI). See the Checks section.
   - `tray-plasmoid/install.sh` - dev-mode installer; uses `kpackagetool6` to install/upgrade into `~/.local/share/plasma/plasmoids/`. The `PKGBUILD` does the same job system-wide.
 - `PKGBUILD` - **fork addition.** Arch package (`litra-custom`) that builds the `litra` CLI, drops the udev rule into `/usr/lib/udev/rules.d/`, and installs the plasmoid system-wide to `/usr/share/plasma/plasmoids/io.github.clearcmos.litra/`. `optdepends` plasma-workspace.
 - `99-litra.rules` - udev rules for non-root USB access on Linux (upstream).
@@ -59,7 +60,7 @@ cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-features --all-targets -- -D warnings
 cargo test --locked --workspace --all-features
 node --test tray-plasmoid/tests/*.test.mjs
-bash tray-plasmoid/tests/run-qmllint.sh
+bash tray-plasmoid/tests/run-qml-checks.sh
 shellcheck tray-plasmoid/install.sh
 shellcheck --shell=bash --exclude=SC2034,SC2154,SC2164 PKGBUILD
 bash tray-plasmoid/tests/check-packaging.sh
@@ -68,9 +69,8 @@ bash tray-plasmoid/tests/check-packaging.sh
 Notes:
 
 - `--all-features` is what pulls `src/menubar.rs` into scope. Without it the fork's own Rust file is compiled by nothing.
-- Do not call `qmllint` directly. There is no portable name for the Qt 6 binary: it is `/usr/lib/qt6/bin/qmllint` on Arch, where plain `/usr/bin/qmllint` is Qt 5 and exits 0 on Plasma 6 QML without reading it; Ubuntu runners have neither on PATH under any name. `run-qmllint.sh` resolves it and asserts the major version. Override with `QMLLINT=/path/to/qmllint` if needed.
-- **The full QML lint only runs here, not in CI.** Run `run-qmllint.sh` with no arguments on this workstation, where Plasma 6 is installed and types resolve; that is the real check. A GitHub runner has qmllint but none of the QtQuick or Plasma QML modules, so `PlasmoidItem` and every Plasma property are unknown names there and no type check is possible at all. CI therefore passes `--no-imports`, which degrades to a parse check over both `main.qml` and `litra.mjs`. That is still worth gating (a syntax error in either breaks the widget outright, and it exits 255 on one, verified in both modes) but do not read a green CI as "the QML is lint-clean". Run it locally before trusting that.
-- `--no-imports` passes `--bare`, so it reproduces the runner exactly. Use it here to debug a CI-only qmllint failure instead of pushing to find out.
+- Do not call `qmllint` or `qmlformat` directly, and do not add category flags to the parse-only mode. There is no portable name for the Qt 6 tools (Arch keeps them in `/usr/lib/qt6/bin` and the Qt 5 `qmllint` at `/usr/bin/qmllint`, where it exits 0 on Plasma 6 QML without reading it), and category flags are not portable across Qt versions: 6.11 has `--unresolved-type` and `--missing-property`, 6.4 on ubuntu-latest rejects both as unknown options. `run-qml-checks.sh` resolves the binaries and asserts Qt 6. Override with `QMLLINT=` or `QMLFORMAT=`.
+- **The full QML lint only runs here, not in CI.** Run the script with no arguments on this workstation, where Plasma 6 is installed and types resolve; that is the real check. A GitHub runner has the Qt tools but none of the QtQuick or Plasma QML modules, so `PlasmoidItem` and every Plasma property are unknown names there and no type checking is possible at all. CI therefore runs `--parse-only`, which uses `qmlformat` (no warning categories, so nothing to drift) purely to confirm `main.qml` and `litra.mjs` parse. That is worth gating, since a syntax error in either breaks the widget outright, but do not read a green CI as "the QML is lint-clean". Run the full check locally before trusting that.
 - `src/menubar.rs` has no tests by choice. It is a macOS-oriented egui/`tray-icon` event loop, it is not run on the Linux workstation this fork is maintained from, and fabricating tests for a GUI loop would be filler. CI compiles, formats and clippy-lints it so it cannot rot silently.
 
 ## Code style

@@ -81,17 +81,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qt6-declarative-dev-tools
 
-      # The script resolves the Qt 6 binary itself. There is no portable name
-      # for it, and picking up a Qt 5 qmllint would exit 0 without reading the
-      # file, so it asserts the major version rather than trusting PATH.
-      #
-      # A parse check, not a full lint: this runner has qmllint but none of the
-      # QtQuick or Plasma 6 QML modules, so no type here can be resolved. What
-      # this gates is that main.qml and litra.mjs parse, which is worth having,
-      # since a syntax error in either breaks the widget outright. The full
-      # lint runs on a machine with Plasma installed (see CLAUDE.md).
+      # A parse check, not a full lint. This runner has the Qt tools but none
+      # of the QtQuick or Plasma 6 QML modules, so no type here can resolve and
+      # qmllint has nothing real to say. What this gates is that main.qml and
+      # litra.mjs parse, which is worth having since a syntax error in either
+      # breaks the widget outright. The full lint runs on a machine with Plasma
+      # installed; see CLAUDE.md. The script resolves the Qt 6 binary itself
+      # and asserts the major version rather than trusting PATH.
       - name: QML and JS parse check
-        run: bash tray-plasmoid/tests/run-qmllint.sh --no-imports
+        run: bash tray-plasmoid/tests/run-qml-checks.sh --parse-only
 
       - name: shellcheck
         run: shellcheck tray-plasmoid/install.sh
